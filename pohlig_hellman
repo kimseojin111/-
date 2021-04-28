@@ -1,0 +1,89 @@
+from functools import reduce
+from pkcs1 import emsa_pkcs1_v15
+
+def mul_inv(a, b):
+    b0= b
+    x0, x1= 0,1
+    if b== 1: return 1
+    while a>1 :
+        q=a// b
+        a, b= b, a%b
+        x0, x1=x1 -q *x0, x0
+    if x1<0 : x1+= b0
+    return x1
+
+
+def chinese_remainder(n, a):
+    sum=0
+    prod=reduce(lambda a, b: a*b, n)
+    for n_i, a_i in zip(n,a):
+        p=prod//n_i 
+        sum += a_i* mul_inv(p, n_i)*p
+    return sum % prod
+
+
+def factorize_p(p):
+    n=p-1
+    x=[]
+    while(n!=1):
+        i=2
+        while(n%i != 0):
+            i=i+1
+        x.append(i)
+        n=n//i
+    return x
+
+def is_generator(m,p):
+    list = factorize_p(p)
+    for i in range(0,len(list)):
+        q=list[i]
+        t = (p-1)//q
+        if pow(m,t,p)==1:
+            return False
+    return True
+
+sign = 879720113812322983620513406832610673602686980603633153801334491681128473011528597507573523260525181350680890465116537354396167326444243042394886161202754460108497570359546253697879021452277840808418860148356951672332704700857118930
+
+p=531268630871904928125236420930762796930566248599562838123179520115291463168597060453850582450268863522872788705521479922595212649079603574353380342938159
+q=111782926116223242998273565336043140272947878733126544785610105844525423542804981413552044527
+print(is_generator(sign,q))
+
+def pohlig_hellman(sign,m,p):
+    # find e such that pow(sign,e,p)==m 
+    q_list = factorize_p(p)
+    e_list = []
+    for i in range(0,len(q_list)):
+        Y=pow(m,(p-1)//q_list[i],p)
+        X=pow(sign,(p-1)//q_list[i],p)
+        e=0
+        while(pow(X,e,p)!=Y):
+            e=e+1
+        e_list.append(e)
+    e = chinese_remainder(q_list,e_list)
+    return e%(p-1)
+
+
+m=pow(sign,19691011200315,q)
+print(pohlig_hellman(sign,m,q))
+
+N=p*q
+def find_e(sign,m):
+    e1 = pohlig_hellman(sign,m,p)
+    e2 = pohlig_hellman(sign,m,q)
+    if  (e1-e2)%2 == 1:
+        return False
+    p1=(p-1)//2
+    e_1=e1%p1
+    q1=(q-1)//2
+    e_2=e2%q1
+    r1=2
+    e_3=e1%2
+    return(chinese_remainder([p1,q1,r1],[e_1,e_2,e_3]))
+# pow(sign,e,N)==m
+suffix =""
+msg="This is a test for a fake signature"+"어떤거"+suffix
+digest = emsa_pkcs1_v15.encode(msg.encode(), BIT_LENGTH // 8)
+
+digest = 47379092172262845921294540053176957863064148471578876072358765808900480733837185251796826441303908628860099203403658239934435426150964794660278410498793785302621389666411700816932745475483171088079786163030574037683298174832652
+print("무야호")
+print(find_e(sign,digest))
