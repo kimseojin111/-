@@ -1,0 +1,119 @@
+from functools import reduce
+from sympy import *
+
+def mul_inv(a, b):
+    b0= b
+    x0, x1= 0,1
+    if b== 1: return 1
+    while a>1 :
+        q=a// b
+        a, b= b, a%b
+        x0, x1=x1 -q *x0, x0
+    if x1<0 : x1+= b0
+    return x1
+
+
+def chinese_remainder(n, a):
+    sum=0
+    prod=reduce(lambda a, b: a*b, n)
+    for n_i, a_i in zip(n,a):
+        p=prod//n_i 
+        sum += a_i* mul_inv(p, n_i)*p
+    return sum % prod, prod
+
+
+def non_quadric_residue_set(p):                                          # (a/p) = -1 인 a들의 집합, (mod 4p) 로 나눠짐  
+    if p == 2: 
+        return [3,5]
+    quadric_residue_p = []
+    non_quadric_residue_p = []
+    
+    for i in range(1,p):
+        if pow(i,(p-1)//2,p) == 1:
+            quadric_residue_p.append(i)
+        else :
+            non_quadric_residue_p.append(i)
+    
+
+    r = []
+
+    if p % 4 == 1:                                                         # p = 1 (mod 4) 니깐 
+        for a in range(1,4*p,2):
+            if a % p in non_quadric_residue_p:
+                r.append(a)
+    
+    elif p % 4 == 3:
+        for a in range(1,4*p,2):
+            if a % 4 == 1: 
+                if a % p in non_quadric_residue_p:
+                    r.append(a)
+            
+            else :
+                if a % p in quadric_residue_p:
+                    r.append(a)
+
+    return r
+
+#print(non_quadric_residue_set(17))
+#print(non_quadric_residue_set(3))
+
+
+
+def reverse_set(set,k,p):                   # k^-1 (s + k -1) s(mod 4p)
+    r = []
+    for i in set:
+        x = pow(k,-1,4*p)*(i+k-1)
+        r.append(x%(4*p))
+    
+    return r 
+
+
+def intersection_set(a,b): 
+    c = []
+    for x in a:
+        if x in b:
+            c.append(x)
+
+    return c
+
+
+B = [3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61]
+
+k1 = 113
+k2 = 101 
+
+# 3 (mod4) 로 만 찾아볼까?
+
+
+n = [4,k1,k2]
+r = [3,pow(-k2,-1,k1),pow(-k1,-1,k2)]
+
+for b in B:
+    r1 = non_quadric_residue_set(b)
+    r2 = reverse_set(r1,k1,b)
+    r3 = reverse_set(r1,k2,b)
+
+    R = intersection_set(r1,intersection_set(r2,r3))
+    print(b)
+    print(R)
+    for i in R:
+        if i%4 == 3:
+            break
+    n.append(b)
+    r.append(i)
+
+residue , N = chinese_remainder(n,r)
+
+t = pow(2,200)
+p = (t//N)*N + residue 
+
+while(True):
+    
+    if isprime(p):
+        if isprime(k1*p-k1+1):
+            if isprime(k2*p-k2+1):
+                break
+    p = p + N
+
+print(p)
+print(p*(k1*p-k1+1)*(k2*p-k2+1))
