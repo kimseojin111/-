@@ -1,0 +1,108 @@
+from re import A
+from pwn import *
+import json
+
+VALUES = ['Ace', 'Two', 'Three', 'Four', 'Five', 'Six',
+          'Seven', 'Eight', 'Nine', 'Ten', 'Jack', 'Queen', 'King']
+SUITS = ['Clubs', 'Hearts', 'Diamonds', 'Spades']
+
+class Card:
+    def __init__(self, value, suit):
+        self.value = value
+        self.suit = suit
+
+
+deck = [Card(value, suit) for suit in SUITS for value in VALUES]
+
+card_list = []
+
+for i in range(len(deck)):
+    t = deck[i]
+    card_list.append(f"{t.value} of {t.suit}")
+
+#for i in range(len(deck)):
+ #   print(f"{i} {x[i]}")
+
+def find_card(m):
+    for i in range(len(card_list)):
+        if card_list[i] == m:
+            return i
+print(find_card("Jack of Clubs"))
+
+prime = 2**61 -1 
+
+
+def adic_52(x):
+    s = 0
+    for i in x:
+        s *= 52 
+        s += i
+    return s
+
+x = [1,2]
+print(adic_52(x))
+
+
+r = remote("socket.cryptohack.org", 13383)
+
+    
+
+def send_h():
+    send = json.dumps({"choice":"h"})
+    r.send(send)
+
+def send_l():
+    send = json.dumps({"choice":"l"})
+    r.send(send)
+
+number_list = []
+for i in range(33):
+    
+    recv = json.loads(r.recvline())
+    t = recv["hand"]
+    n = find_card(t)
+    number_list.append(n)
+    if i == 32:
+        break
+    if n%13 <6:
+        send_h()
+    else:
+        send_l()
+    
+print(f"number_list : {number_list}")
+
+
+
+X = adic_52(number_list[:11])
+Y = adic_52(number_list[11:22])
+Z = adic_52(number_list[22:])
+
+#p*X + q = Y 
+#p*Y + q = Z
+
+
+p = (Y-Z)*pow(X-Y,-1,prime)
+q = Y - p*X 
+
+p = p%prime
+q = q%prime
+
+number_list1 = number_list
+print(f"number_list1 : {number_list1}")
+for i in range(1000):
+    Z = (p*Z + q) % prime
+    tmp = Z
+    while(tmp != 0):
+        number_list1.insert(11*(i+3),tmp%52)
+        tmp //= 52
+
+for i in range(32,200):
+    if number_list1[i]%13 > number_list1[i+1]%13:
+        send_l()
+    else:
+        send_h()
+    recv = json.loads(r.recvline())
+    print(recv)
+    t = recv["hand"]
+    n = find_card(t)
+    number_list.append(n)
