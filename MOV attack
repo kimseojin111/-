@@ -1,0 +1,49 @@
+# Curve parameters
+p = 1331169830894825846283645180581
+a = -35
+b = 98
+
+# Setup curve
+E = EllipticCurve(GF(p), [a, b])
+# Generator
+gx = 479691812266187139164535778017
+gy = 568535594075310466177352868412
+
+G=E((gx,gy))
+# Alice's Public Key
+P = E((1110072782478160369250829345256, 800079550745409318906383650948))
+
+
+# Find the embedding degree of the curve
+# Smallest k such that order of G divides p^k -1 
+order = G.order()
+k = 1
+while (p**k - 1) % order:
+    k += 1
+print(k)
+
+# Form Elliptic Curve in extended field
+K.<a> = GF(p**k)
+EK = E.base_extend(K)
+# Corresponding points in this extended field
+PK = EK(P)
+GK = EK(G)
+
+# Find Q in this extended field which is linearly independent to P 
+
+R = EK.random_point()
+m = R.order()
+d = gcd(m, G.order())
+Q = (m//d)*R
+
+print("Pairing points  to F*p^k")
+# Can also use Weil pairing here , that does not require k
+
+AA = PK.tate_pairing(Q, G.order(),k)
+GG = GK.tate_pairing(Q, G.order(),k)
+
+print("DLP solving initiated......")
+# Solving in finite field F*(p^k) 
+dlA = AA.log(GG)
+# We get Alice's secret
+print(dlA)
